@@ -1,6 +1,7 @@
 package controllers
 
 import (
+	"net/http"
 	"strconv"
 	"strings"
 	"test/lib"
@@ -50,7 +51,7 @@ var Listusers = []Users{
 }
 
 func GetAllUsers(ctx *gin.Context) {
-	ctx.JSON(200, Response{
+	ctx.JSON(http.StatusOK, Response{
 		Success: true,
 		Message: "See All Users",
 		Results: Listusers,
@@ -66,8 +67,15 @@ func GetUserById(ctx *gin.Context) {
 			temp = data
 		}
 	}
+	if temp.Id != id {
+		ctx.JSON(http.StatusNotFound, Response{
+			Success: false,
+			Message: "ID Not Found",
+		})
+		return
+	}
 
-	ctx.JSON(200, Response{
+	ctx.JSON(http.StatusOK, Response{
 		Success: true,
 		Message: "You Get User By ID",
 		Results: temp,
@@ -86,7 +94,7 @@ func LoginUsers(ctx *gin.Context) {
 	}
 
 	if foundUser == (Users{}) {
-		ctx.JSON(400, Response{
+		ctx.JSON(http.StatusBadRequest, Response{
 			Success: false,
 			Message: "Email Not Found",
 		})
@@ -95,7 +103,7 @@ func LoginUsers(ctx *gin.Context) {
 
 	match, _ := argon2.ComparePasswordAndHash(formUser.Password, formUser.Password, foundUser.Password)
 	if !match {
-		ctx.JSON(400, Response{
+		ctx.JSON(http.StatusBadRequest, Response{
 			Success: false,
 			Message: "Invalid Password",
 		})
@@ -107,7 +115,7 @@ func LoginUsers(ctx *gin.Context) {
 	}{
 		UserId: foundUser.Id,
 	})
-	ctx.JSON(200, Response{
+	ctx.JSON(http.StatusOK, Response{
 		Success: true,
 		Message: "Login Success",
 		Results: token,
@@ -121,41 +129,41 @@ func RegisterUser(ctx *gin.Context) {
 
 	for _, getuser := range Listusers {
 		if formUser.Email == getuser.Email {
-			ctx.JSON(400, Response{
+			ctx.JSON(http.StatusBadRequest, Response{
 				Success: false,
 				Message: "Email Has Registered",
 			})
 		}
 		if !strings.Contains(formUser.Email, "@") {
-			ctx.JSON(400, Response{
+			ctx.JSON(http.StatusBadRequest, Response{
 				Success: false,
 				Message: "Password Must Include @",
 			})
 			return
 		}
 		if len(formUser.Password) < 6 {
-			ctx.JSON(400, Response{
+			ctx.JSON(http.StatusBadRequest, Response{
 				Success: false,
-				Message: "Password Must be 6 Character",
+				Message: "Email Must be 6 Character",
 			})
 			return
 		}
 		if !strings.ContainsAny(formUser.Password, "ABCDEFGHIJKLMNOPQRSTUVWXYZ") {
-			ctx.JSON(400, Response{
+			ctx.JSON(http.StatusBadRequest, Response{
 				Success: false,
 				Message: "Password Must Include Uppercase Character",
 			})
 			return
 		}
 		if !strings.ContainsAny(formUser.Password, "0123456789") {
-			ctx.JSON(400, Response{
+			ctx.JSON(http.StatusBadRequest, Response{
 				Success: false,
 				Message: "Password Must Include One Number",
 			})
 			return
 		}
 		if !strings.ContainsAny(formUser.Password, "!@#$%^&*()-_=+[]{}|;:,.<>?") {
-			ctx.JSON(400, Response{
+			ctx.JSON(http.StatusBadRequest, Response{
 				Success: false,
 				Message: "Password Must Include Unique Character",
 			})
@@ -170,14 +178,14 @@ func RegisterUser(ctx *gin.Context) {
 	}
 
 	if formUser.Email == "" {
-		ctx.JSON(400, Response{
+		ctx.JSON(http.StatusBadRequest, Response{
 			Success: false,
 			Message: "Fill Your Email",
 		})
 	} else {
 		row.Id = len(Listusers) + 1
 		Listusers = append(Listusers, row)
-		ctx.JSON(200, Response{
+		ctx.JSON(http.StatusOK, Response{
 			Success: true,
 			Message: "Register Success",
 			Results: row,
@@ -194,33 +202,38 @@ func DeleteUser(ctx *gin.Context) {
 	for i, val := range Listusers {
 		if val.Id == id {
 			Listusers = append(Listusers[:i], Listusers[i+1:]...)
-			ctx.JSON(200, Response{
+			ctx.JSON(http.StatusOK, Response{
 				Success: true,
 				Message: "Delete deleted successfully",
 				Results: val,
 			})
+			return
 		}
 	}
+	ctx.JSON(http.StatusNotFound, Response{
+		Success: false,
+		Message: "ID Not Found",
+	})
+
 }
 
 func EditUser(ctx *gin.Context) {
 	id, _ := strconv.Atoi(ctx.Param("id"))
 
 	var temp *Users
-	for data := range Listusers {
-		if Listusers[data].Id == id {
-			temp = &Listusers[data]
+	for i := range Listusers {
+		if Listusers[i].Id == id {
+			temp = &Listusers[i]
 		}
 	}
-
-	var newData Users
-	if err := ctx.ShouldBind(&newData); err != nil {
-		ctx.JSON(400, gin.H{
-			"Success": false,
-			"Message": "Invalid data format",
+	if temp == nil {
+		ctx.JSON(http.StatusNotFound, Response{
+			Success: false,
+			Message: "ID Not Found",
 		})
 		return
 	}
+	var newData Users
 
 	temp.Id = id
 
@@ -234,25 +247,70 @@ func EditUser(ctx *gin.Context) {
 		temp.Password = newData.Password
 	}
 
-	ctx.JSON(200, Response{
+	ctx.JSON(http.StatusOK, Response{
 		Success: true,
 		Message: "Update Movie",
 		Results: temp,
 	})
+
 }
 func AddUser(ctx *gin.Context) {
 	var formData Users
 	ctx.ShouldBind(&formData)
+	for _, getuser := range Listusers {
+		if formData.Email == getuser.Email {
+			ctx.JSON(http.StatusBadRequest, Response{
+				Success: false,
+				Message: "Email Has Registered",
+			})
+		}
+		if !strings.Contains(formData.Email, "@") {
+			ctx.JSON(http.StatusBadRequest, Response{
+				Success: false,
+				Message: "Password Must Include @",
+			})
+			return
+		}
+		if len(formData.Password) < 6 {
+			ctx.JSON(http.StatusBadRequest, Response{
+				Success: false,
+				Message: "Email Must be 6 Character",
+			})
+			return
+		}
+		if !strings.ContainsAny(formData.Password, "ABCDEFGHIJKLMNOPQRSTUVWXYZ") {
+			ctx.JSON(http.StatusBadRequest, Response{
+				Success: false,
+				Message: "Password Must Include Uppercase Character",
+			})
+			return
+		}
+		if !strings.ContainsAny(formData.Password, "0123456789") {
+			ctx.JSON(http.StatusBadRequest, Response{
+				Success: false,
+				Message: "Password Must Include One Number",
+			})
+			return
+		}
+		if !strings.ContainsAny(formData.Password, "!@#$%^&*()-_=+[]{}|;:,.<>?") {
+			ctx.JSON(http.StatusBadRequest, Response{
+				Success: false,
+				Message: "Password Must Include Unique Character",
+			})
+			return
+		}
+	}
+	hash, _ := argon2.CreateHash(formData.Password, formData.Password, argon2.DefaultParams)
 
 	var row = Users{
 		Fullname: formData.Fullname,
 		Email:    formData.Email,
-		Password: formData.Password,
+		Password: hash,
 	}
 
 	row.Id = len(Listusers) + 1
 	Listusers = append(Listusers, row)
-	ctx.JSON(200, Response{
+	ctx.JSON(http.StatusOK, Response{
 		Success: true,
 		Message: "Your Movie Saved",
 		Results: row,

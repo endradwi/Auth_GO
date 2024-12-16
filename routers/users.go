@@ -11,7 +11,7 @@ func UsersRouter(router *gin.RouterGroup) {
 	router.Use(middlewares.ValidationToken())
 	router.GET("", controllers.GetAllUsers)
 	router.GET("/:id", controllers.GetUserById)
-	router.POST("", controllers.GetUserById)
+	router.POST("", controllers.AddUser)
 	router.PATCH("/:id", controllers.EditUser)
 	router.DELETE("/:id", controllers.DeleteUser)
 }

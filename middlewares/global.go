@@ -15,6 +15,14 @@ func ValidationToken() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		ctx.Header("Content-Type", "text/html")
 		head := ctx.GetHeader("Authorization")
+
+		if head == "" {
+			ctx.JSON(http.StatusNotFound, controllers.Response{
+				Success: false,
+				Message: "Token not found",
+			})
+			ctx.Abort()
+		}
 		token := strings.Split(head, " ")[1:][0]
 
 		tok, _ := jwt.ParseSigned(token, []jose.SignatureAlgorithm{jose.HS256})

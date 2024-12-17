@@ -22,6 +22,7 @@ func ValidationToken() gin.HandlerFunc {
 				Message: "Token not found",
 			})
 			ctx.Abort()
+			return
 		}
 		token := strings.Split(head, " ")[1:][0]
 

@@ -1,6 +1,7 @@
 package controllers
 
 import (
+	"net/http"
 	"sort"
 	"strconv"
 	"strings"
@@ -118,15 +119,14 @@ func EditMovie(ctx *gin.Context) {
 			temp = &ListMovie[i]
 		}
 	}
-
-	var newData Movie
-	if err := ctx.ShouldBind(&newData); err != nil {
-		ctx.JSON(400, gin.H{
-			"Success": false,
-			"Message": "Invalid data format",
+	if temp == nil {
+		ctx.JSON(http.StatusNotFound, Response{
+			Success: false,
+			Message: "ID Not Found",
 		})
 		return
 	}
+	var newData Movie
 
 	temp.Id = id
 
@@ -140,7 +140,7 @@ func EditMovie(ctx *gin.Context) {
 		temp.Description = newData.Description
 	}
 
-	ctx.JSON(200, Response{
+	ctx.JSON(http.StatusOK, Response{
 		Success: true,
 		Message: "Update Movie",
 		Results: temp,
@@ -158,8 +158,15 @@ func GetMoviesById(ctx *gin.Context) {
 			temp = data
 		}
 	}
+	if temp.Id != id {
+		ctx.JSON(http.StatusNotFound, Response{
+			Success: false,
+			Message: "ID Not Found",
+		})
+		return
+	}
 
-	ctx.JSON(200, Response{
+	ctx.JSON(http.StatusOK, Response{
 		Success: true,
 		Message: "You Get Movie By ID",
 		Results: temp,
@@ -187,17 +194,22 @@ func SaveMovies(ctx *gin.Context) {
 }
 
 func DeleteMovie(ctx *gin.Context) {
-
 	id, _ := strconv.Atoi(ctx.Param("id"))
 
 	for i, val := range ListMovie {
 		if val.Id == id {
 			ListMovie = append(ListMovie[:i], ListMovie[i+1:]...)
-			ctx.JSON(200, Response{
+			ctx.JSON(http.StatusOK, Response{
 				Success: true,
-				Message: "Movie deleted successfully",
+				Message: "Delete deleted successfully",
 				Results: val,
 			})
+			return
 		}
 	}
+	ctx.JSON(http.StatusNotFound, Response{
+		Success: false,
+		Message: "ID Not Found",
+	})
+
 }

@@ -2,6 +2,7 @@ package controllers
 
 import (
 	"fmt"
+	"math"
 	"net/http"
 	"strconv"
 	"strings"
@@ -52,12 +53,40 @@ var Listusers = []Users{
 }
 
 func GetAllUsers(ctx *gin.Context) {
-	searchall := models.FindAllUser()
-	// search := ctx.Query("search")
-	// searchpage := ctx.Query("page")
-	// searchlimit := ctx.Query("limit")
-	// sortmovie := ctx.Query("sort")
+	search := ctx.DefaultQuery("search", "")
+	page, _ := strconv.Atoi(ctx.DefaultQuery("page", "2"))
+	limit, _ := strconv.Atoi(ctx.DefaultQuery("limit", "5"))
+	sortuser := ctx.DefaultQuery("sort", "ASC")
+	searchall := models.FindAllUser(page, limit, search, sortuser)
 
+	if sortuser != "ASC" {
+		sortuser = "DESC"
+	}
+	count := models.CountData(search)
+
+	totalPage := int(math.Ceil(float64(count) / float64(limit)))
+	nextPage := page + 1
+	if nextPage > totalPage {
+		nextPage = totalPage
+	}
+	prevPage := page - 1
+	if prevPage < 2 {
+		prevPage = 0
+	}
+	ctx.JSON(200, Response{
+		Success: true,
+		Message: "See All Users",
+		PageInfo: PageInfo{
+			CurentPage: page,
+			NextPage:   nextPage,
+			PrevPage:   prevPage,
+			TotalPage:  totalPage,
+			TotalData:  count,
+		},
+		Results: searchall,
+	})
+
+	// totalData :=
 	// pagesearch, _ := strconv.Atoi(searchpage)
 	// limitsearch, _ := strconv.Atoi(searchlimit)
 	// if pagesearch <= 0 {
@@ -94,11 +123,6 @@ func GetAllUsers(ctx *gin.Context) {
 	// 	}
 	// }
 
-	ctx.JSON(200, Response{
-		Success: true,
-		Message: "See All Users",
-		Results: searchall,
-	})
 }
 func GetUserById(ctx *gin.Context) {
 	pram, _ := strconv.Atoi(ctx.Param("id"))
@@ -216,6 +240,7 @@ func EditUser(ctx *gin.Context) {
 func AddUser(ctx *gin.Context) {
 	var formData models.Users
 	ctx.ShouldBind(&formData)
+	fmt.Println(formData)
 	hash, _ := argon2.CreateHash(formData.Password, formData.Password, argon2.DefaultParams)
 	if formData.Password != "" {
 		formData.Password = hash

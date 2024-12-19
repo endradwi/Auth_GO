@@ -2,6 +2,7 @@ package models
 
 import (
 	"context"
+	"fmt"
 	"test/lib"
 
 	"github.com/jackc/pgx/v5"
@@ -30,14 +31,36 @@ func FindOneUser(paramId int) Users {
 	return user
 }
 
-func FindAllUser() Listusers {
+func CountData(search string) int {
 	conn := lib.DB()
 	defer conn.Close(context.Background())
 
-	rows, _ := conn.Query(context.Background(), `
-SELECT id, '' as fullname, password, email
-from users
-`)
+	var count int
+	search = fmt.Sprintf("%%%s%%", search)
+
+	conn.QueryRow(context.Background(), `
+	SELECT COUNT(id)
+	FROM users
+	WHERE email ILIKE $1
+	`, search).Scan((&count))
+	return count
+}
+
+func FindAllUser(page int, limit int, search string, sort string) Listusers {
+	conn := lib.DB()
+	defer conn.Close(context.Background())
+	offset := (page - 1) * limit
+
+	searching := fmt.Sprintf("%%%s%%", search)
+
+	query := fmt.Sprintf(`
+	SELECT id, '' as fullname, password, email
+	FROM users
+	WHERE email ILIKE $1
+	ORDER BY id %s
+	LIMIT $2 OFFSET $3
+	`, sort)
+	rows, _ := conn.Query(context.Background(), query, searching, limit, offset)
 	users, _ := pgx.CollectRows(rows, pgx.RowToStructByName[Users])
 	return users
 }
@@ -46,7 +69,6 @@ func FindOneUserByEmail(email string) Users {
 	conn := lib.DB()
 	defer conn.Close(context.Background())
 	var user Users
-
 	conn.QueryRow(context.Background(), `
 	SELECT id, email, password 
 	FROM users WHERE email = $1

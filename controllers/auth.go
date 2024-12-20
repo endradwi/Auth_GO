@@ -15,7 +15,7 @@ func LoginUsers(ctx *gin.Context) {
 	ctx.ShouldBind(&formUser)
 
 	foundUser := models.FindOneUserByEmail(formUser.Email)
-	if foundUser == (models.Users{}) {
+	if formUser.Email != foundUser.Email {
 		ctx.JSON(http.StatusBadRequest, Response{
 			Success: false,
 			Message: "Email Not Found",
